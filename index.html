@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disposable Camera - Wedding</title>
+    <style>
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #f4f1ea;
+            text-align: center;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .camera-container {
+            background-color: #d2c8b8;
+            border: 3px solid #8c7b65;
+            border-radius: 20px;
+            padding: 40px 20px;
+            box-shadow: 8px 8px 0px #8c7b65;
+            max-width: 350px;
+            width: 100%;
+        }
+        h1 {
+            color: #5a4f3f;
+            font-size: 22px;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        p {
+            color: #7b6d58;
+            font-size: 14px;
+            margin-bottom: 40px;
+        }
+        .lens {
+            width: 130px;
+            height: 130px;
+            background-color: #2c3e50;
+            border-radius: 50%;
+            margin: 0 auto 40px;
+            border: 15px solid #34495e;
+            position: relative;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+        }
+        .lens::after {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 35px;
+            height: 35px;
+            background-color: rgba(255,255,255,0.4);
+            border-radius: 50%;
+        }
+        .capture-btn {
+            background-color: #e74c3c;
+            color: white;
+            border: 4px solid #c0392b;
+            border-radius: 50%;
+            width: 80px;
+            height: 80px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 6px 0 #c0392b;
+            transition: all 0.1s;
+        }
+        .capture-btn:active {
+            transform: translateY(6px);
+            box-shadow: 0 0 0 #c0392b;
+        }
+        input[type="file"] {
+            display: none; /* Sembunyikan input asli */
+        }
+        #status {
+            margin-top: 25px;
+            font-weight: bold;
+            color: #5a4f3f;
+            min-height: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="camera-container">
+    <h1>Wedding Snap</h1>
+    <p>Help us capture the moment!</p>
+
+    <!-- Lensa Kamera Imitasi -->
+    <div class="lens"></div>
+
+    <!-- Input file dengan capture="environment" untuk kamera belakang -->
+    <input type="file" id="cameraInput" accept="image/*" capture="environment">
+
+    <!-- Tombol Shutter -->
+    <button class="capture-btn" onclick="document.getElementById('cameraInput').click()">SNAP</button>
+
+    <div id="status"></div>
+</div>
+
+<script>
+    // PERHATIAN: Ganti URL di bawah ini dengan URL Web App Apps Script kamu nanti
+    const SCRIPT_URL = 'GANTI_DENGAN_URL_WEB_APP_APPS_SCRIPT_KAMU';
+
+    const cameraInput = document.getElementById('cameraInput');
+    const statusDiv = document.getElementById('status');
+
+    cameraInput.addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (file) {
+            uploadPhoto(file);
+        }
+    });
+
+    function uploadPhoto(file) {
+        statusDiv.innerText = "Memutar roll film... 📸";
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const base64Data = e.target.result;
+
+            const payload = {
+                base64: base64Data,
+                filename: 'WeddingSnap_' + Date.now() + '.jpg',
+                mimeType: file.type
+            };
+
+            statusDiv.innerText = "Menyimpan ke album... ⏳";
+
+            fetch(SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify(payload),
+                // Gunakan text/plain agar tidak terkena error CORS dari Google
+                headers: {
+                    'Content-Type': 'text/plain;charset=utf-8', 
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    statusDiv.innerText = "Berhasil! Siap untuk foto berikutnya. 🎉";
+                } else {
+                    statusDiv.innerText = "Ups, gagal menyimpan. Coba lagi.";
+                    console.error(data.message);
+                }
+                cameraInput.value = ''; // Reset input
+            })
+            .catch(error => {
+                statusDiv.innerText = "Terjadi kesalahan jaringan.";
+                console.error('Error:', error);
+            });
+        };
+        reader.readAsDataURL(file);
+    }
+</script>
+
+</body>
+</html>
