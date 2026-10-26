@@ -15,9 +15,10 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
+            /* Menggunakan 100dvh agar menyesuaikan area bersih browser HP (menghindari search bar) */
+            height: 100dvh;
+            min-height: -webkit-fill-available;
             overflow: hidden;
-            /* Mencegah efek scroll/refresh bawaan browser saat swipe */
             overscroll-behavior-y: contain; 
         }
         .camera-body {
@@ -55,7 +56,6 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            /* Penting agar swipe terdeteksi */
             touch-action: pan-y; 
         }
         #camera-stream {
@@ -63,6 +63,8 @@
             height: 100%;
             object-fit: cover;
             transition: transform 0.2s ease-in-out;
+            /* Tampilan live di layar menggunakan filter retro Y2K */
+            filter: contrast(1.3) brightness(1.1) saturate(1.2) sepia(0.25) hue-rotate(-5deg);
         }
         .frame-overlay {
             position: absolute;
@@ -79,7 +81,6 @@
         .frame-overlay::before { top: 50%; left: 45%; right: 45%; height: 1px; }
         .frame-overlay::after { left: 50%; top: 45%; bottom: 45%; width: 1px; }
         
-        /* Indikator nama filter saat di-swipe */
         #filter-name-display {
             position: absolute;
             top: 25px;
@@ -106,7 +107,8 @@
         }
 
         .controls {
-            padding: 20px;
+            /* Menambahkan padding bawah 50px agar tombol naik menjauhi search bar browser */
+            padding: 20px 20px 50px 20px;
             display: flex;
             justify-content: space-around;
             align-items: center;
@@ -184,13 +186,12 @@
         <div class="film-counter" id="counter">13</div>
     </div>
 
-    <!-- Area layar kamera (Viewfinder) yang bisa di-swipe -->
     <div class="viewfinder-container" id="viewfinder">
         <video id="camera-stream" autoplay playsinline></video>
         <div class="frame-overlay"></div>
         <div id="screen-flash"></div>
         
-        <div id="filter-name-display">NORMAL</div>
+        <div id="filter-name-display">Y2K DISPOSABLE</div>
         <div class="swipe-hint">← Geser layar untuk filter →</div>
         <div id="status-text"></div>
     </div>
@@ -229,68 +230,42 @@
     let flashOn = false;
     let isZoomed = false;
 
-    // DAFTAR 12 FILTER RETRO
+    // Filter pertama (Y2K DISPOSABLE) dibuat persis seperti prompt Anda.
     const filters = [
-        { name: 'NORMAL', css: 'none' },
-        { name: 'KODAK', css: 'contrast(1.2) saturate(1.3) sepia(0.2)' },
-        { name: 'FUJI', css: 'contrast(1.1) saturate(1.4) hue-rotate(-10deg)' },
-        { name: 'B & W', css: 'grayscale(100%)' },
-        { name: 'NOIR', css: 'grayscale(100%) contrast(1.5)' },
-        { name: 'SEPIA', css: 'sepia(100%)' },
+        { name: 'Y2K DISPOSABLE', css: 'contrast(1.3) brightness(1.1) saturate(1.2) sepia(0.25) hue-rotate(-5deg)' },
+        { name: 'B & W', css: 'grayscale(100%) contrast(1.2)' },
+        { name: 'NOIR', css: 'grayscale(100%) contrast(1.5) brightness(0.9)' },
         { name: 'POLAROID', css: 'contrast(0.8) brightness(1.2) saturate(0.8) sepia(0.1)' },
         { name: 'LO-FI', css: 'contrast(1.4) saturate(1.5)' },
-        { name: 'FADED', css: 'contrast(0.8) brightness(1.1)' },
-        { name: 'WARM', css: 'sepia(0.5) saturate(1.2) contrast(1.1)' },
-        { name: 'COOL', css: 'hue-rotate(15deg) saturate(1.1) contrast(1.1)' },
-        { name: 'VINTAGE', css: 'sepia(0.6) contrast(1.2) brightness(0.9)' }
+        { name: 'FADED', css: 'contrast(0.8) brightness(1.1)' }
     ];
     let currentFilterIdx = 0;
     let filterTimeout;
 
-    // ----- LOGIKA DETEKSI SWIPE (GESER) -----
+    // ----- LOGIKA GESER (SWIPE) -----
     let touchStartX = 0;
     let touchEndX = 0;
 
-    viewfinder.addEventListener('touchstart', e => {
-        touchStartX = e.changedTouches[0].screenX;
-    }, {passive: true});
-
-    viewfinder.addEventListener('touchend', e => {
-        touchEndX = e.changedTouches[0].screenX;
-        handleSwipe();
-    }, {passive: true});
+    viewfinder.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, {passive: true});
+    viewfinder.addEventListener('touchend', e => { touchEndX = e.changedTouches[0].screenX; handleSwipe(); }, {passive: true});
 
     function handleSwipe() {
-        const threshold = 50; // Jarak minimal geser agar terhitung (50 pixel)
-        if (touchEndX < touchStartX - threshold) {
-            // Geser ke Kiri -> Filter Selanjutnya
-            changeFilter(1);
-        }
-        if (touchEndX > touchStartX + threshold) {
-            // Geser ke Kanan -> Filter Sebelumnya
-            changeFilter(-1);
-        }
+        const threshold = 50; 
+        if (touchEndX < touchStartX - threshold) changeFilter(1);
+        if (touchEndX > touchStartX + threshold) changeFilter(-1);
     }
 
     function changeFilter(direction) {
-        // Ganti index dengan sistem melingkar (loop)
         currentFilterIdx = (currentFilterIdx + direction + filters.length) % filters.length;
         const selectedFilter = filters[currentFilterIdx];
         
-        // Terapkan filter ke kamera
         video.style.filter = selectedFilter.css;
-
-        // Tampilkan nama filter di layar sejenak
         filterNameDisplay.innerText = selectedFilter.name;
         filterNameDisplay.style.opacity = 1;
 
-        // Sembunyikan tulisan setelah 1.5 detik
         clearTimeout(filterTimeout);
-        filterTimeout = setTimeout(() => {
-            filterNameDisplay.style.opacity = 0;
-        }, 1500);
+        filterTimeout = setTimeout(() => { filterNameDisplay.style.opacity = 0; }, 1500);
     }
-    // ----------------------------------------
 
     function updateCounterUI() {
         let remaining = MAX_PHOTOS - photosTaken;
@@ -335,6 +310,7 @@
         video.style.transform = isZoomed ? 'scale(2)' : 'scale(1)';
     }
 
+    // Fungsi Utama: Mengambil dan Memproses Foto Analog
     function takePhoto() {
         if (photosTaken >= MAX_PHOTOS) return;
 
@@ -351,30 +327,44 @@
         canvas.height = video.videoHeight;
         const ctx = canvas.getContext('2d');
 
-        // 1. Terapkan filter yang aktif
+        // 1. Terapkan Warna/Filter (Harsh flash, high contrast, warm)
         ctx.filter = filters[currentFilterIdx].css;
 
-        // 2. Logika Zoom
+        // 2. Logika Zoom & Gambar
         if (isZoomed) {
-            const cropWidth = video.videoWidth / 2;
-            const cropHeight = video.videoHeight / 2;
-            const startX = video.videoWidth / 4;
-            const startY = video.videoHeight / 4;
-            ctx.drawImage(video, startX, startY, cropWidth, cropHeight, 0, 0, canvas.width, canvas.height);
+            const cropW = video.videoWidth / 2, cropH = video.videoHeight / 2;
+            const sX = video.videoWidth / 4, sY = video.videoHeight / 4;
+            ctx.drawImage(video, sX, sY, cropW, cropH, 0, 0, canvas.width, canvas.height);
         } else {
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         }
         ctx.filter = 'none';
 
-        // 3. Vignette
+        // 3. Sentuhan "Warm/Yellowish Vintage" yang memudar
+        ctx.fillStyle = 'rgba(255, 180, 0, 0.08)'; 
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // 4. Efek Vignette Samar (Gelap di tepi)
         const gradient = ctx.createRadialGradient(
-            canvas.width/2, canvas.height/2, canvas.width * 0.4,
-            canvas.width/2, canvas.height/2, canvas.width * 0.8
+            canvas.width/2, canvas.height/2, canvas.width * 0.45,
+            canvas.width/2, canvas.height/2, canvas.width * 0.85
         );
         gradient.addColorStop(0, 'rgba(0,0,0,0)');
-        gradient.addColorStop(1, 'rgba(0,0,0,0.5)');
+        gradient.addColorStop(1, 'rgba(0,0,0,0.4)');
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // 5. Film Grain yang Tajam (Memanipulasi piksel)
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const pixels = imgData.data;
+        for (let i = 0; i < pixels.length; i += 4) {
+            // Menghasilkan noise/bintik acak antara -25 hingga +25
+            const noise = (Math.random() - 0.5) * 50; 
+            pixels[i] += noise;     // Merah
+            pixels[i+1] += noise;   // Hijau
+            pixels[i+2] += noise;   // Biru
+        }
+        ctx.putImageData(imgData, 0, 0);
 
         const base64Data = canvas.toDataURL('image/jpeg', 0.8);
 
@@ -385,7 +375,7 @@
     }
 
     function sendToDrive(base64Data) {
-        statusText.innerText = "Mencetak foto... ⏳";
+        statusText.innerText = "Mencuci film... ⏳";
         
         const payload = {
             base64: base64Data,
@@ -400,20 +390,4 @@
         })
         .then(response => response.json())
         .then(data => {
-            if (data.status === 'success') {
-                statusText.innerText = "Tersimpan di album! 🎞️";
-                setTimeout(() => { statusText.innerText = ""; }, 2000);
-            } else {
-                statusText.innerText = "Ups, gagal menyimpan.";
-            }
-        })
-        .catch(error => {
-            statusText.innerText = "Jaringan lambat, gagal disimpan.";
-        });
-    }
-
-    window.onload = startCamera;
-</script>
-
-</body>
-</html>
+            if
