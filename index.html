@@ -15,11 +15,9 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            /* Menggunakan 100dvh agar menyesuaikan area bersih browser HP (menghindari search bar) */
-            height: 100dvh;
-            min-height: -webkit-fill-available;
+            height: 100dvh; /* Menyesuaikan search bar HP */
+            min-height: 100vh;
             overflow: hidden;
-            overscroll-behavior-y: contain; 
         }
         .camera-body {
             background-color: #2b5f3a; 
@@ -56,15 +54,12 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            touch-action: pan-y; 
         }
         #camera-stream {
             width: 100%;
             height: 100%;
             object-fit: cover;
             transition: transform 0.2s ease-in-out;
-            /* Tampilan live di layar menggunakan filter retro Y2K */
-            filter: contrast(1.3) brightness(1.1) saturate(1.2) sepia(0.25) hue-rotate(-5deg);
         }
         .frame-overlay {
             position: absolute;
@@ -81,39 +76,40 @@
         .frame-overlay::before { top: 50%; left: 45%; right: 45%; height: 1px; }
         .frame-overlay::after { left: 50%; top: 45%; bottom: 45%; width: 1px; }
         
-        #filter-name-display {
-            position: absolute;
-            top: 25px;
-            background: rgba(0, 0, 0, 0.7);
-            color: #00ffcc;
-            padding: 8px 20px;
-            border-radius: 20px;
-            font-size: 18px;
-            font-weight: bold;
-            text-transform: uppercase;
-            opacity: 0;
-            transition: opacity 0.3s;
-            z-index: 20;
-            pointer-events: none;
+        /* Baris Tombol Filter */
+        .filter-bar {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            background-color: #2b5f3a;
+            padding: 15px 20px 5px 20px;
+            border-top: 2px solid #111;
         }
-        .swipe-hint {
-            position: absolute;
-            bottom: 60px;
-            color: rgba(255,255,255,0.7);
+        .filter-btn {
+            background-color: #111;
+            color: #ccc;
+            border: 2px solid #555;
+            padding: 8px;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
             font-size: 12px;
-            z-index: 20;
-            pointer-events: none;
-            text-shadow: 1px 1px 2px #000;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            flex: 1;
+        }
+        .filter-btn.active {
+            background-color: #00ffcc;
+            color: #111;
+            border-color: #00ffcc;
         }
 
         .controls {
-            /* Menambahkan padding bawah 50px agar tombol naik menjauhi search bar browser */
-            padding: 20px 20px 50px 20px;
+            padding: 10px 20px 40px 20px; /* Padding bawah ekstra agar tidak tertutup menu HP */
             display: flex;
             justify-content: space-around;
             align-items: center;
             background-color: #2b5f3a;
-            border-top: 2px solid #111;
         }
         .side-btn {
             background-color: #333;
@@ -190,10 +186,14 @@
         <video id="camera-stream" autoplay playsinline></video>
         <div class="frame-overlay"></div>
         <div id="screen-flash"></div>
-        
-        <div id="filter-name-display">Y2K DISPOSABLE</div>
-        <div class="swipe-hint">← Geser layar untuk filter →</div>
         <div id="status-text"></div>
+    </div>
+
+    <!-- Tiga Tombol Filter -->
+    <div class="filter-bar">
+        <button class="filter-btn active" onclick="setFilter(0)">NORMAL</button>
+        <button class="filter-btn" onclick="setFilter(1)">B & W</button>
+        <button class="filter-btn" onclick="setFilter(2)">NOIR</button>
     </div>
 
     <div class="controls">
@@ -206,10 +206,8 @@
 <canvas id="photo-canvas" style="display: none;"></canvas>
 
 <script>
-    // ---------------------------------------------------------
-    // MASUKKAN URL APPS SCRIPT ANDA DI BAWAH INI
+    // URL Apps Script Anda
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz4Kqn-ZLGxXSEXeH8Koeq0jElFckT_TEZ0pEJdYQO8ROrskvgTIEMo5oEzJe8Lm6p8/exec';
-    // ---------------------------------------------------------
 
     const MAX_PHOTOS = 13;
     let photosTaken = localStorage.getItem('wedding_photos') ? parseInt(localStorage.getItem('wedding_photos')) : 0;
@@ -222,49 +220,34 @@
     const counterDisplay = document.getElementById('counter');
     const statusText = document.getElementById('status-text');
     const screenFlash = document.getElementById('screen-flash');
-    const filterNameDisplay = document.getElementById('filter-name-display');
-    const viewfinder = document.getElementById('viewfinder');
 
     let stream = null;
     let imageTrack = null;
     let flashOn = false;
     let isZoomed = false;
 
-    // Filter pertama (Y2K DISPOSABLE) dibuat persis seperti prompt Anda.
+    // Data Filter
     const filters = [
-        { name: 'Y2K DISPOSABLE', css: 'contrast(1.3) brightness(1.1) saturate(1.2) sepia(0.25) hue-rotate(-5deg)' },
-        { name: 'B & W', css: 'grayscale(100%) contrast(1.2)' },
-        { name: 'NOIR', css: 'grayscale(100%) contrast(1.5) brightness(0.9)' },
-        { name: 'POLAROID', css: 'contrast(0.8) brightness(1.2) saturate(0.8) sepia(0.1)' },
-        { name: 'LO-FI', css: 'contrast(1.4) saturate(1.5)' },
-        { name: 'FADED', css: 'contrast(0.8) brightness(1.1)' }
+        { name: 'NORMAL', css: 'none' },
+        { name: 'B&W', css: 'grayscale(100%)' },
+        { name: 'NOIR', css: 'grayscale(100%) contrast(1.5)' }
     ];
     let currentFilterIdx = 0;
-    let filterTimeout;
 
-    // ----- LOGIKA GESER (SWIPE) -----
-    let touchStartX = 0;
-    let touchEndX = 0;
+    // Fungsi mengganti filter saat tombol ditekan
+    function setFilter(idx) {
+        currentFilterIdx = idx;
+        video.style.filter = filters[currentFilterIdx].css;
 
-    viewfinder.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, {passive: true});
-    viewfinder.addEventListener('touchend', e => { touchEndX = e.changedTouches[0].screenX; handleSwipe(); }, {passive: true});
-
-    function handleSwipe() {
-        const threshold = 50; 
-        if (touchEndX < touchStartX - threshold) changeFilter(1);
-        if (touchEndX > touchStartX + threshold) changeFilter(-1);
-    }
-
-    function changeFilter(direction) {
-        currentFilterIdx = (currentFilterIdx + direction + filters.length) % filters.length;
-        const selectedFilter = filters[currentFilterIdx];
-        
-        video.style.filter = selectedFilter.css;
-        filterNameDisplay.innerText = selectedFilter.name;
-        filterNameDisplay.style.opacity = 1;
-
-        clearTimeout(filterTimeout);
-        filterTimeout = setTimeout(() => { filterNameDisplay.style.opacity = 0; }, 1500);
+        // Ubah tampilan tombol yang aktif
+        const buttons = document.querySelectorAll('.filter-btn');
+        buttons.forEach((btn, i) => {
+            if (i === idx) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
     }
 
     function updateCounterUI() {
@@ -310,11 +293,9 @@
         video.style.transform = isZoomed ? 'scale(2)' : 'scale(1)';
     }
 
-    // Fungsi Utama: Mengambil dan Memproses Foto Analog
     function takePhoto() {
         if (photosTaken >= MAX_PHOTOS) return;
 
-        // Efek Flash
         if (flashOn) {
             screenFlash.style.opacity = 1;
             setTimeout(() => { screenFlash.style.opacity = 0; }, 150);
@@ -327,44 +308,29 @@
         canvas.height = video.videoHeight;
         const ctx = canvas.getContext('2d');
 
-        // 1. Terapkan Warna/Filter (Harsh flash, high contrast, warm)
+        // Terapkan filter ke hasil cetak
         ctx.filter = filters[currentFilterIdx].css;
 
-        // 2. Logika Zoom & Gambar
         if (isZoomed) {
-            const cropW = video.videoWidth / 2, cropH = video.videoHeight / 2;
-            const sX = video.videoWidth / 4, sY = video.videoHeight / 4;
-            ctx.drawImage(video, sX, sY, cropW, cropH, 0, 0, canvas.width, canvas.height);
+            const cropWidth = video.videoWidth / 2;
+            const cropHeight = video.videoHeight / 2;
+            const startX = video.videoWidth / 4;
+            const startY = video.videoHeight / 4;
+            ctx.drawImage(video, startX, startY, cropWidth, cropHeight, 0, 0, canvas.width, canvas.height);
         } else {
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         }
         ctx.filter = 'none';
 
-        // 3. Sentuhan "Warm/Yellowish Vintage" yang memudar
-        ctx.fillStyle = 'rgba(255, 180, 0, 0.08)'; 
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // 4. Efek Vignette Samar (Gelap di tepi)
+        // Vignette analog
         const gradient = ctx.createRadialGradient(
-            canvas.width/2, canvas.height/2, canvas.width * 0.45,
-            canvas.width/2, canvas.height/2, canvas.width * 0.85
+            canvas.width/2, canvas.height/2, canvas.width * 0.4,
+            canvas.width/2, canvas.height/2, canvas.width * 0.8
         );
         gradient.addColorStop(0, 'rgba(0,0,0,0)');
-        gradient.addColorStop(1, 'rgba(0,0,0,0.4)');
+        gradient.addColorStop(1, 'rgba(0,0,0,0.5)');
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // 5. Film Grain yang Tajam (Memanipulasi piksel)
-        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const pixels = imgData.data;
-        for (let i = 0; i < pixels.length; i += 4) {
-            // Menghasilkan noise/bintik acak antara -25 hingga +25
-            const noise = (Math.random() - 0.5) * 50; 
-            pixels[i] += noise;     // Merah
-            pixels[i+1] += noise;   // Hijau
-            pixels[i+2] += noise;   // Biru
-        }
-        ctx.putImageData(imgData, 0, 0);
 
         const base64Data = canvas.toDataURL('image/jpeg', 0.8);
 
@@ -375,7 +341,7 @@
     }
 
     function sendToDrive(base64Data) {
-        statusText.innerText = "Mencuci film... ⏳";
+        statusText.innerText = "Mencetak foto... ⏳";
         
         const payload = {
             base64: base64Data,
@@ -390,4 +356,20 @@
         })
         .then(response => response.json())
         .then(data => {
-            if
+            if (data.status === 'success') {
+                statusText.innerText = "Tersimpan di album! 🎞️";
+                setTimeout(() => { statusText.innerText = ""; }, 2000);
+            } else {
+                statusText.innerText = "Ups, gagal menyimpan.";
+            }
+        })
+        .catch(error => {
+            statusText.innerText = "Jaringan lambat, gagal disimpan.";
+        });
+    }
+
+    window.onload = startCamera;
+</script>
+
+</body>
+</html>
