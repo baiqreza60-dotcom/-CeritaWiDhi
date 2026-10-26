@@ -2,391 +2,162 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Disposable Camera - Wedding</title>
     <style>
         body {
-            margin: 0;
-            padding: 0;
-            background-color: #1a1a1a;
-            color: white;
             font-family: 'Courier New', Courier, monospace;
+            background-color: #f4f1ea;
+            text-align: center;
+            padding: 20px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
-            height: 100dvh;
-            overflow: hidden;
+            min-height: 100vh;
+            margin: 0;
         }
-        .camera-body {
-            background-color: #2b5f3a; 
+        .camera-container {
+            background-color: #d2c8b8;
+            border: 3px solid #8c7b65;
+            border-radius: 20px;
+            padding: 40px 20px;
+            box-shadow: 8px 8px 0px #8c7b65;
+            max-width: 350px;
             width: 100%;
-            height: 100%;
-            max-width: 500px;
-            display: flex;
-            flex-direction: column;
+        }
+        h1 {
+            color: #5a4f3f;
+            font-size: 22px;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        p {
+            color: #7b6d58;
+            font-size: 14px;
+            margin-bottom: 40px;
+        }
+        .lens {
+            width: 130px;
+            height: 130px;
+            background-color: #2c3e50;
+            border-radius: 50%;
+            margin: 0 auto 40px;
+            border: 15px solid #34495e;
             position: relative;
-            z-index: 1;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
         }
-        .header {
-            padding: 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background-color: #1c3d25;
-            border-bottom: 2px solid #111;
-            z-index: 10;
-        }
-        .film-counter {
-            background-color: #000;
-            color: #ff3300;
-            padding: 5px 10px;
-            font-size: 24px;
-            font-weight: bold;
-            border: 2px solid #555;
-            border-radius: 5px;
-            font-family: 'Digital', 'Courier New', monospace;
-        }
-        .viewfinder-container {
-            flex-grow: 1;
-            position: relative;
-            background-color: #000;
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 5;
-        }
-        #camera-stream {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transition: transform 0.2s ease-in-out;
-        }
-        .frame-overlay {
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            border: 10px solid rgba(0, 0, 0, 0.5);
-            pointer-events: none;
-            box-shadow: inset 0 0 50px rgba(0,0,0,0.8);
-            z-index: 10;
-        }
-        .frame-overlay::before, .frame-overlay::after {
+        .lens::after {
             content: '';
             position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 35px;
+            height: 35px;
             background-color: rgba(255,255,255,0.4);
-        }
-        .frame-overlay::before { top: 50%; left: 45%; right: 45%; height: 1px; }
-        .frame-overlay::after { left: 50%; top: 45%; bottom: 45%; width: 1px; }
-        
-        .filter-bar {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            background-color: #2b5f3a;
-            padding: 15px 20px 5px 20px;
-            border-top: 2px solid #111;
-            z-index: 20;
-        }
-        .filter-btn {
-            background-color: #111;
-            color: #ccc;
-            border: 2px solid #555;
-            padding: 8px;
-            font-family: 'Courier New', Courier, monospace;
-            font-weight: bold;
-            font-size: 12px;
-            border-radius: 20px;
-            cursor: pointer;
-            transition: all 0.2s;
-            flex: 1;
-        }
-        .filter-btn.active {
-            background-color: #00ffcc;
-            color: #111;
-            border-color: #00ffcc;
-        }
-
-        .controls {
-            padding: 10px 20px 40px 20px; 
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            background-color: #2b5f3a;
-            z-index: 20;
-        }
-        .side-btn {
-            background-color: #333;
-            color: white;
-            border: 2px solid #555;
-            padding: 10px;
             border-radius: 50%;
-            width: 65px;
-            height: 65px;
-            font-weight: bold;
-            font-size: 12px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
         }
-        .side-btn.active {
-            background-color: #ffd700;
-            color: black;
-            border-color: #fff;
-        }
-        .shutter-btn {
-            background-color: #ff3300;
-            border: 3px solid #ccc;
+        .capture-btn {
+            background-color: #e74c3c;
+            color: white;
+            border: 4px solid #c0392b;
+            border-radius: 50%;
             width: 80px;
             height: 80px;
-            border-radius: 50%;
-            cursor: pointer;
-            box-shadow: 0 4px 0 #991f00;
-            transition: transform 0.1s, box-shadow 0.1s;
-        }
-        .shutter-btn:active {
-            transform: translateY(4px);
-            box-shadow: 0 0 0 #991f00;
-        }
-        .shutter-btn:disabled {
-            background-color: #555;
-            box-shadow: none;
-            cursor: not-allowed;
-        }
-        #screen-flash {
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-color: white;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.1s ease-out;
-            z-index: 15;
-        }
-        #status-text {
-            position: absolute;
-            bottom: 30px;
-            left: 0;
-            width: 100%;
-            text-align: center;
             font-size: 14px;
             font-weight: bold;
-            color: #fff;
-            text-shadow: 1px 1px 2px #000;
-            z-index: 20;
+            cursor: pointer;
+            box-shadow: 0 6px 0 #c0392b;
+            transition: all 0.1s;
+        }
+        .capture-btn:active {
+            transform: translateY(6px);
+            box-shadow: 0 0 0 #c0392b;
+        }
+        input[type="file"] {
+            display: none; /* Sembunyikan input asli */
+        }
+        #status {
+            margin-top: 25px;
+            font-weight: bold;
+            color: #5a4f3f;
+            min-height: 20px;
         }
     </style>
 </head>
 <body>
 
-<div class="camera-body">
-    <div class="header">
-        <div>WEDDING SNAP</div>
-        <div class="film-counter" id="counter">13</div>
-    </div>
+<div class="camera-container">
+    <h1>Wedding Snap</h1>
+    <p>Help us capture the moment!</p>
 
-    <div class="viewfinder-container" id="viewfinder">
-        <video id="camera-stream" autoplay playsinline></video>
-        <div class="frame-overlay"></div>
-        <div id="screen-flash"></div>
-        <div id="status-text"></div>
-    </div>
+    <!-- Lensa Kamera Imitasi -->
+    <div class="lens"></div>
 
-    <div class="filter-bar">
-        <button class="filter-btn active" onclick="setFilter(0)">NORMAL</button>
-        <button class="filter-btn" onclick="setFilter(1)">B & W</button>
-        <button class="filter-btn" onclick="setFilter(2)">NOIR</button>
-    </div>
+    <!-- Input file dengan capture="environment" untuk kamera belakang -->
+    <input type="file" id="cameraInput" accept="image/*" capture="environment">
 
-    <div class="controls">
-        <button class="side-btn" id="flashBtn" onclick="toggleFlash()">FLASH<br>OFF</button>
-        <button class="shutter-btn" id="shutterBtn" onclick="takePhoto()"></button>
-        <button class="side-btn" id="zoomBtn" onclick="toggleZoom()">ZOOM<br>1X</button>
-    </div>
+    <!-- Tombol Shutter -->
+    <button class="capture-btn" onclick="document.getElementById('cameraInput').click()">SNAP</button>
+
+    <div id="status"></div>
 </div>
 
-<canvas id="photo-canvas" style="display: none;"></canvas>
-
 <script>
+    // PERHATIAN: Ganti URL di bawah ini dengan URL Web App Apps Script kamu nanti
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz4Kqn-ZLGxXSEXeH8Koeq0jElFckT_TEZ0pEJdYQO8ROrskvgTIEMo5oEzJe8Lm6p8/exec';
 
-    const MAX_PHOTOS = 13;
-    let photosTaken = localStorage.getItem('wedding_photos') ? parseInt(localStorage.getItem('wedding_photos')) : 0;
-    
-    const video = document.getElementById('camera-stream');
-    const canvas = document.getElementById('photo-canvas');
-    const flashBtn = document.getElementById('flashBtn');
-    const zoomBtn = document.getElementById('zoomBtn');
-    const shutterBtn = document.getElementById('shutterBtn');
-    const counterDisplay = document.getElementById('counter');
-    const statusText = document.getElementById('status-text');
-    const screenFlash = document.getElementById('screen-flash');
+    const cameraInput = document.getElementById('cameraInput');
+    const statusDiv = document.getElementById('status');
 
-    let stream = null;
-    let imageTrack = null;
-    let flashOn = false;
-    let isZoomed = false;
-
-    const filters = [
-        { name: 'NORMAL', css: 'none' },
-        { name: 'B&W', css: 'grayscale(100%)' },
-        { name: 'NOIR', css: 'grayscale(100%) contrast(1.5)' }
-    ];
-    let currentFilterIdx = 0;
-
-    function setFilter(idx) {
-        currentFilterIdx = idx;
-        video.style.filter = filters[currentFilterIdx].css;
-
-        const buttons = document.querySelectorAll('.filter-btn');
-        buttons.forEach((btn, i) => {
-            if (i === idx) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
-        });
-    }
-
-    function updateCounterUI() {
-        let remaining = MAX_PHOTOS - photosTaken;
-        counterDisplay.innerText = remaining < 10 ? '0' + remaining : remaining;
-        if (remaining <= 0) {
-            shutterBtn.disabled = true;
-            statusText.innerText = "Roll film habis! Terima kasih.";
+    cameraInput.addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (file) {
+            uploadPhoto(file);
         }
-    }
-    updateCounterUI();
+    });
 
-    async function startCamera() {
-        try {
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                alert("Browser ini tidak mendukung akses kamera langsung.");
-                return;
-            }
+    function uploadPhoto(file) {
+        statusDiv.innerText = "Memutar roll film... 📸";
 
-            stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: { ideal: "environment" } },
-                audio: false
-            });
-            
-            video.srcObject = stream;
-            
-            await video.play();
-            
-            const tracks = stream.getVideoTracks();
-            if (tracks.length > 0) {
-                imageTrack = tracks[0];
-            }
-        } catch (err) {
-            alert("Gagal menyalakan kamera: " + err.message + ". Pastikan izin kamera sudah diberikan di pengaturan browser Anda.");
-            console.error("Camera Error: ", err);
-        }
-    }
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const base64Data = e.target.result;
 
-    async function toggleFlash() {
-        flashOn = !flashOn;
-        flashBtn.classList.toggle('active');
-        flashBtn.innerHTML = flashOn ? "FLASH<br>ON" : "FLASH<br>OFF";
-        
-        if (imageTrack) {
-            try {
-                const capabilities = imageTrack.getCapabilities();
-                if (capabilities.torch) {
-                    await imageTrack.applyConstraints({ advanced: [{ torch: flashOn }] });
+            const payload = {
+                base64: base64Data,
+                filename: 'WeddingSnap_' + Date.now() + '.jpg',
+                mimeType: file.type
+            };
+
+            statusDiv.innerText = "Menyimpan ke album... ⏳";
+
+            fetch(SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify(payload),
+                // Gunakan text/plain agar tidak terkena error CORS dari Google
+                headers: {
+                    'Content-Type': 'text/plain;charset=utf-8', 
                 }
-            } catch (e) {
-                console.log("Hardware senter tidak didukung di HP ini", e);
-            }
-        }
-    }
-
-    function toggleZoom() {
-        isZoomed = !isZoomed;
-        zoomBtn.classList.toggle('active');
-        zoomBtn.innerHTML = isZoomed ? "ZOOM<br>2X" : "ZOOM<br>1X";
-        video.style.transform = isZoomed ? 'scale(2)' : 'scale(1)';
-    }
-
-    function takePhoto() {
-        if (photosTaken >= MAX_PHOTOS) return;
-
-        if (flashOn) {
-            screenFlash.style.opacity = 1;
-            setTimeout(() => { screenFlash.style.opacity = 0; }, 150);
-        } else {
-            screenFlash.style.opacity = 0.5;
-            setTimeout(() => { screenFlash.style.opacity = 0; }, 50);
-        }
-
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const ctx = canvas.getContext('2d');
-
-        ctx.filter = filters[currentFilterIdx].css;
-
-        if (isZoomed) {
-            const cropWidth = video.videoWidth / 2;
-            const cropHeight = video.videoHeight / 2;
-            const startX = video.videoWidth / 4;
-            const startY = video.videoHeight / 4;
-            ctx.drawImage(video, startX, startY, cropWidth, cropHeight, 0, 0, canvas.width, canvas.height);
-        } else {
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        }
-        ctx.filter = 'none';
-
-        // Modifikasi: Efek vignette (pinggiran gelap) HANYA berlaku jika BUKAN filter NORMAL (index 0)
-        if (currentFilterIdx !== 0) {
-            const gradient = ctx.createRadialGradient(
-                canvas.width/2, canvas.height/2, canvas.width * 0.4,
-                canvas.width/2, canvas.height/2, canvas.width * 0.8
-            );
-            gradient.addColorStop(0, 'rgba(0,0,0,0)');
-            gradient.addColorStop(1, 'rgba(0,0,0,0.5)'); 
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-        }
-
-        const base64Data = canvas.toDataURL('image/jpeg', 0.8);
-
-        photosTaken++;
-        localStorage.setItem('wedding_photos', photosTaken);
-        updateCounterUI();
-        sendToDrive(base64Data);
-    }
-
-    function sendToDrive(base64Data) {
-        statusText.innerText = "Mencetak foto... ⏳";
-        
-        const payload = {
-            base64: base64Data,
-            filename: 'RetroSnap_' + Date.now() + '.jpg',
-            mimeType: 'image/jpeg'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    statusDiv.innerText = "Berhasil! Siap untuk foto berikutnya. 🎉";
+                } else {
+                    statusDiv.innerText = "Ups, gagal menyimpan. Coba lagi.";
+                    console.error(data.message);
+                }
+                cameraInput.value = ''; // Reset input
+            })
+            .catch(error => {
+                statusDiv.innerText = "Terjadi kesalahan jaringan.";
+                console.error('Error:', error);
+            });
         };
-
-        fetch(SCRIPT_URL, {
-            method: 'POST',
-            body: JSON.stringify(payload),
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                statusText.innerText = "Tersimpan di album! 🎞️";
-                setTimeout(() => { statusText.innerText = ""; }, 2000);
-            } else {
-                statusText.innerText = "Ups, gagal menyimpan.";
-            }
-        })
-        .catch(error => {
-            statusText.innerText = "Jaringan lambat, gagal disimpan.";
-        });
+        reader.readAsDataURL(file);
     }
-
-    window.onload = startCamera;
 </script>
 
 </body>
