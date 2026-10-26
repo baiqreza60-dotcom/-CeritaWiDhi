@@ -17,9 +17,11 @@
             justify-content: center;
             height: 100vh;
             overflow: hidden;
+            /* Mencegah efek scroll/refresh bawaan browser saat swipe */
+            overscroll-behavior-y: contain; 
         }
         .camera-body {
-            background-color: #2b5f3a; /* Warna hijau ala Fuji/Kodak */
+            background-color: #2b5f3a; 
             width: 100%;
             height: 100%;
             max-width: 500px;
@@ -53,15 +55,15 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            /* Penting agar swipe terdeteksi */
+            touch-action: pan-y; 
         }
-        /* Filter live view di layar */
         #camera-stream {
             width: 100%;
             height: 100%;
             object-fit: cover;
-            filter: contrast(1.2) saturate(1.2) sepia(0.2);
+            transition: transform 0.2s ease-in-out;
         }
-        /* Frame Viewfinder */
         .frame-overlay {
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -69,7 +71,6 @@
             pointer-events: none;
             box-shadow: inset 0 0 50px rgba(0,0,0,0.8);
         }
-        /* Crosshair di tengah */
         .frame-overlay::before, .frame-overlay::after {
             content: '';
             position: absolute;
@@ -78,6 +79,32 @@
         .frame-overlay::before { top: 50%; left: 45%; right: 45%; height: 1px; }
         .frame-overlay::after { left: 50%; top: 45%; bottom: 45%; width: 1px; }
         
+        /* Indikator nama filter saat di-swipe */
+        #filter-name-display {
+            position: absolute;
+            top: 25px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #00ffcc;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 18px;
+            font-weight: bold;
+            text-transform: uppercase;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 20;
+            pointer-events: none;
+        }
+        .swipe-hint {
+            position: absolute;
+            bottom: 60px;
+            color: rgba(255,255,255,0.7);
+            font-size: 12px;
+            z-index: 20;
+            pointer-events: none;
+            text-shadow: 1px 1px 2px #000;
+        }
+
         .controls {
             padding: 20px;
             display: flex;
@@ -86,19 +113,23 @@
             background-color: #2b5f3a;
             border-top: 2px solid #111;
         }
-        .flash-btn {
+        .side-btn {
             background-color: #333;
             color: white;
             border: 2px solid #555;
-            padding: 15px;
+            padding: 10px;
             border-radius: 50%;
-            width: 60px;
-            height: 60px;
+            width: 65px;
+            height: 65px;
             font-weight: bold;
             font-size: 12px;
             cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
         }
-        .flash-btn.active {
+        .side-btn.active {
             background-color: #ffd700;
             color: black;
             border-color: #fff;
@@ -122,7 +153,6 @@
             box-shadow: none;
             cursor: not-allowed;
         }
-        /* Efek kilat layar putih */
         #screen-flash {
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -134,7 +164,7 @@
         }
         #status-text {
             position: absolute;
-            bottom: 120px;
+            bottom: 30px;
             left: 0;
             width: 100%;
             text-align: center;
@@ -154,30 +184,31 @@
         <div class="film-counter" id="counter">13</div>
     </div>
 
-    <div class="viewfinder-container">
-        <!-- Video stream dari kamera -->
+    <!-- Area layar kamera (Viewfinder) yang bisa di-swipe -->
+    <div class="viewfinder-container" id="viewfinder">
         <video id="camera-stream" autoplay playsinline></video>
-        <!-- Overlay bingkai -->
         <div class="frame-overlay"></div>
-        <!-- Efek kilat flash -->
         <div id="screen-flash"></div>
-        <!-- Status upload -->
+        
+        <div id="filter-name-display">NORMAL</div>
+        <div class="swipe-hint">← Geser layar untuk filter →</div>
         <div id="status-text"></div>
     </div>
 
     <div class="controls">
-        <button class="flash-btn" id="flashBtn" onclick="toggleFlash()">FLASH<br>OFF</button>
+        <button class="side-btn" id="flashBtn" onclick="toggleFlash()">FLASH<br>OFF</button>
         <button class="shutter-btn" id="shutterBtn" onclick="takePhoto()"></button>
-        <div style="width: 60px;"></div> <!-- Spacer -->
+        <button class="side-btn" id="zoomBtn" onclick="toggleZoom()">ZOOM<br>1X</button>
     </div>
 </div>
 
-<!-- Canvas tersembunyi untuk memproses foto -->
 <canvas id="photo-canvas" style="display: none;"></canvas>
 
 <script>
-    // MASUKKAN URL APPS SCRIPT ANDA DI SINI
+    // ---------------------------------------------------------
+    // MASUKKAN URL APPS SCRIPT ANDA DI BAWAH INI
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz4Kqn-ZLGxXSEXeH8Koeq0jElFckT_TEZ0pEJdYQO8ROrskvgTIEMo5oEzJe8Lm6p8/exec';
+    // ---------------------------------------------------------
 
     const MAX_PHOTOS = 13;
     let photosTaken = localStorage.getItem('wedding_photos') ? parseInt(localStorage.getItem('wedding_photos')) : 0;
@@ -185,20 +216,85 @@
     const video = document.getElementById('camera-stream');
     const canvas = document.getElementById('photo-canvas');
     const flashBtn = document.getElementById('flashBtn');
+    const zoomBtn = document.getElementById('zoomBtn');
     const shutterBtn = document.getElementById('shutterBtn');
     const counterDisplay = document.getElementById('counter');
     const statusText = document.getElementById('status-text');
     const screenFlash = document.getElementById('screen-flash');
+    const filterNameDisplay = document.getElementById('filter-name-display');
+    const viewfinder = document.getElementById('viewfinder');
 
     let stream = null;
     let imageTrack = null;
     let flashOn = false;
+    let isZoomed = false;
 
-    // Update tampilan sisa foto
+    // DAFTAR 12 FILTER RETRO
+    const filters = [
+        { name: 'NORMAL', css: 'none' },
+        { name: 'KODAK', css: 'contrast(1.2) saturate(1.3) sepia(0.2)' },
+        { name: 'FUJI', css: 'contrast(1.1) saturate(1.4) hue-rotate(-10deg)' },
+        { name: 'B & W', css: 'grayscale(100%)' },
+        { name: 'NOIR', css: 'grayscale(100%) contrast(1.5)' },
+        { name: 'SEPIA', css: 'sepia(100%)' },
+        { name: 'POLAROID', css: 'contrast(0.8) brightness(1.2) saturate(0.8) sepia(0.1)' },
+        { name: 'LO-FI', css: 'contrast(1.4) saturate(1.5)' },
+        { name: 'FADED', css: 'contrast(0.8) brightness(1.1)' },
+        { name: 'WARM', css: 'sepia(0.5) saturate(1.2) contrast(1.1)' },
+        { name: 'COOL', css: 'hue-rotate(15deg) saturate(1.1) contrast(1.1)' },
+        { name: 'VINTAGE', css: 'sepia(0.6) contrast(1.2) brightness(0.9)' }
+    ];
+    let currentFilterIdx = 0;
+    let filterTimeout;
+
+    // ----- LOGIKA DETEKSI SWIPE (GESER) -----
+    let touchStartX = 0;
+    let touchEndX = 0;
+
+    viewfinder.addEventListener('touchstart', e => {
+        touchStartX = e.changedTouches[0].screenX;
+    }, {passive: true});
+
+    viewfinder.addEventListener('touchend', e => {
+        touchEndX = e.changedTouches[0].screenX;
+        handleSwipe();
+    }, {passive: true});
+
+    function handleSwipe() {
+        const threshold = 50; // Jarak minimal geser agar terhitung (50 pixel)
+        if (touchEndX < touchStartX - threshold) {
+            // Geser ke Kiri -> Filter Selanjutnya
+            changeFilter(1);
+        }
+        if (touchEndX > touchStartX + threshold) {
+            // Geser ke Kanan -> Filter Sebelumnya
+            changeFilter(-1);
+        }
+    }
+
+    function changeFilter(direction) {
+        // Ganti index dengan sistem melingkar (loop)
+        currentFilterIdx = (currentFilterIdx + direction + filters.length) % filters.length;
+        const selectedFilter = filters[currentFilterIdx];
+        
+        // Terapkan filter ke kamera
+        video.style.filter = selectedFilter.css;
+
+        // Tampilkan nama filter di layar sejenak
+        filterNameDisplay.innerText = selectedFilter.name;
+        filterNameDisplay.style.opacity = 1;
+
+        // Sembunyikan tulisan setelah 1.5 detik
+        clearTimeout(filterTimeout);
+        filterTimeout = setTimeout(() => {
+            filterNameDisplay.style.opacity = 0;
+        }, 1500);
+    }
+    // ----------------------------------------
+
     function updateCounterUI() {
         let remaining = MAX_PHOTOS - photosTaken;
         counterDisplay.innerText = remaining < 10 ? '0' + remaining : remaining;
-        
         if (remaining <= 0) {
             shutterBtn.disabled = true;
             statusText.innerText = "Roll film habis! Terima kasih.";
@@ -206,7 +302,6 @@
     }
     updateCounterUI();
 
-    // Meminta akses kamera belakang
     async function startCamera() {
         try {
             stream = await navigator.mediaDevices.getUserMedia({
@@ -214,106 +309,87 @@
                 audio: false
             });
             video.srcObject = stream;
-            
-            // Ambil track video untuk mengontrol flash (jika didukung)
             imageTrack = stream.getVideoTracks()[0];
         } catch (err) {
             alert("Gagal mengakses kamera. Tolong izinkan akses kamera di browser Anda.");
-            console.error(err);
         }
     }
 
-    // Mengaktifkan/menonaktifkan hardware flash
     async function toggleFlash() {
         flashOn = !flashOn;
         flashBtn.classList.toggle('active');
         flashBtn.innerHTML = flashOn ? "FLASH<br>ON" : "FLASH<br>OFF";
-
         if (imageTrack) {
             const capabilities = imageTrack.getCapabilities();
             if (capabilities.torch) {
-                try {
-                    await imageTrack.applyConstraints({
-                        advanced: [{ torch: flashOn }]
-                    });
-                } catch (e) {
-                    console.log("Tidak bisa menyalakan senter hardware", e);
-                }
-            } else {
-                // Jika hardware tidak didukung (sangat sering terjadi di iPhone),
-                // abaikan saja, kita tetap punya screen flash buatan.
-                console.log("Torch hardware tidak didukung.");
+                try { await imageTrack.applyConstraints({ advanced: [{ torch: flashOn }] }); } 
+                catch (e) { console.log("Torch error", e); }
             }
         }
     }
 
-    // Fungsi saat tombol shutter ditekan
+    function toggleZoom() {
+        isZoomed = !isZoomed;
+        zoomBtn.classList.toggle('active');
+        zoomBtn.innerHTML = isZoomed ? "ZOOM<br>2X" : "ZOOM<br>1X";
+        video.style.transform = isZoomed ? 'scale(2)' : 'scale(1)';
+    }
+
     function takePhoto() {
         if (photosTaken >= MAX_PHOTOS) return;
 
-        // Efek Flash Layar Putih
+        // Efek Flash
         if (flashOn) {
             screenFlash.style.opacity = 1;
             setTimeout(() => { screenFlash.style.opacity = 0; }, 150);
         } else {
-            // Flash buatan tipis sebagai penanda jepretan
             screenFlash.style.opacity = 0.5;
             setTimeout(() => { screenFlash.style.opacity = 0; }, 50);
         }
 
-        // Putar suara shutter (opsional, jika ingin menambahkan MP3)
-        // new Audio('shutter.mp3').play();
-
-        // Atur ukuran canvas sama dengan video aktual
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         const ctx = canvas.getContext('2d');
 
-        // 1. Gambar video ke canvas beserta filter warna
-        ctx.filter = 'contrast(1.2) saturate(1.3) sepia(0.2)';
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        // 1. Terapkan filter yang aktif
+        ctx.filter = filters[currentFilterIdx].css;
+
+        // 2. Logika Zoom
+        if (isZoomed) {
+            const cropWidth = video.videoWidth / 2;
+            const cropHeight = video.videoHeight / 2;
+            const startX = video.videoWidth / 4;
+            const startY = video.videoHeight / 4;
+            ctx.drawImage(video, startX, startY, cropWidth, cropHeight, 0, 0, canvas.width, canvas.height);
+        } else {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        }
         ctx.filter = 'none';
 
-        // 2. Tambahkan efek Vignette (pinggiran gelap)
+        // 3. Vignette
         const gradient = ctx.createRadialGradient(
-            canvas.width/2, canvas.height/2, 0,
-            canvas.width/2, canvas.height/2, canvas.width * 0.7
+            canvas.width/2, canvas.height/2, canvas.width * 0.4,
+            canvas.width/2, canvas.height/2, canvas.width * 0.8
         );
         gradient.addColorStop(0, 'rgba(0,0,0,0)');
-        gradient.addColorStop(1, 'rgba(0,0,0,0.6)');
+        gradient.addColorStop(1, 'rgba(0,0,0,0.5)');
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // 3. Tambahkan Cap Tanggal ala Analog di Kanan Bawah
-        const date = new Date();
-        const dateString = `${date.getDate()} ${date.getMonth()+1} '${date.getFullYear().toString().substr(2)}`;
-        
-        ctx.font = `bold ${canvas.height * 0.05}px "Courier New"`;
-        ctx.fillStyle = '#ff9900'; // Warna oranye neon
-        ctx.shadowColor = 'black';
-        ctx.shadowBlur = 4;
-        ctx.textAlign = 'right';
-        ctx.fillText(dateString, canvas.width - (canvas.width * 0.05), canvas.height - (canvas.height * 0.05));
-
-        // Ubah gambar menjadi base64
         const base64Data = canvas.toDataURL('image/jpeg', 0.8);
 
-        // Tambah hitungan foto dan simpan ke memori HP
         photosTaken++;
         localStorage.setItem('wedding_photos', photosTaken);
         updateCounterUI();
-
-        // Kirim ke Google Drive
         sendToDrive(base64Data);
     }
 
-    // Fungsi upload foto
     function sendToDrive(base64Data) {
         statusText.innerText = "Mencetak foto... ⏳";
         
         const payload = {
             base64: base64Data,
-            filename: 'KameraAnalog_' + Date.now() + '.jpg',
+            filename: 'RetroSnap_' + Date.now() + '.jpg',
             mimeType: 'image/jpeg'
         };
 
@@ -325,18 +401,17 @@
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
-                statusText.innerText = "Tersimpan! 🎞️";
+                statusText.innerText = "Tersimpan di album! 🎞️";
                 setTimeout(() => { statusText.innerText = ""; }, 2000);
             } else {
                 statusText.innerText = "Ups, gagal menyimpan.";
             }
         })
         .catch(error => {
-            statusText.innerText = "Jaringan jelek, gagal disimpan.";
+            statusText.innerText = "Jaringan lambat, gagal disimpan.";
         });
     }
 
-    // Jalankan kamera saat halaman dibuka
     window.onload = startCamera;
 </script>
 
