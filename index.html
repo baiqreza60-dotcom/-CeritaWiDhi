@@ -2,162 +2,342 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Disposable Camera - Wedding</title>
     <style>
         body {
+            margin: 0;
+            padding: 0;
+            background-color: #1a1a1a;
+            color: white;
             font-family: 'Courier New', Courier, monospace;
-            background-color: #f4f1ea;
-            text-align: center;
-            padding: 20px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
-            margin: 0;
+            height: 100vh;
+            overflow: hidden;
         }
-        .camera-container {
-            background-color: #d2c8b8;
-            border: 3px solid #8c7b65;
-            border-radius: 20px;
-            padding: 40px 20px;
-            box-shadow: 8px 8px 0px #8c7b65;
-            max-width: 350px;
+        .camera-body {
+            background-color: #2b5f3a; /* Warna hijau ala Fuji/Kodak */
             width: 100%;
-        }
-        h1 {
-            color: #5a4f3f;
-            font-size: 22px;
-            margin-bottom: 5px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-        p {
-            color: #7b6d58;
-            font-size: 14px;
-            margin-bottom: 40px;
-        }
-        .lens {
-            width: 130px;
-            height: 130px;
-            background-color: #2c3e50;
-            border-radius: 50%;
-            margin: 0 auto 40px;
-            border: 15px solid #34495e;
+            height: 100%;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
             position: relative;
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
         }
-        .lens::after {
+        .header {
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #1c3d25;
+            border-bottom: 2px solid #111;
+        }
+        .film-counter {
+            background-color: #000;
+            color: #ff3300;
+            padding: 5px 10px;
+            font-size: 24px;
+            font-weight: bold;
+            border: 2px solid #555;
+            border-radius: 5px;
+            font-family: 'Digital', 'Courier New', monospace;
+        }
+        .viewfinder-container {
+            flex-grow: 1;
+            position: relative;
+            background-color: #000;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        /* Filter live view di layar */
+        #camera-stream {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: contrast(1.2) saturate(1.2) sepia(0.2);
+        }
+        /* Frame Viewfinder */
+        .frame-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border: 10px solid rgba(0, 0, 0, 0.5);
+            pointer-events: none;
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.8);
+        }
+        /* Crosshair di tengah */
+        .frame-overlay::before, .frame-overlay::after {
             content: '';
             position: absolute;
-            top: 20px;
-            left: 20px;
-            width: 35px;
-            height: 35px;
             background-color: rgba(255,255,255,0.4);
-            border-radius: 50%;
         }
-        .capture-btn {
-            background-color: #e74c3c;
+        .frame-overlay::before { top: 50%; left: 45%; right: 45%; height: 1px; }
+        .frame-overlay::after { left: 50%; top: 45%; bottom: 45%; width: 1px; }
+        
+        .controls {
+            padding: 20px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            background-color: #2b5f3a;
+            border-top: 2px solid #111;
+        }
+        .flash-btn {
+            background-color: #333;
             color: white;
-            border: 4px solid #c0392b;
+            border: 2px solid #555;
+            padding: 15px;
             border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            font-weight: bold;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .flash-btn.active {
+            background-color: #ffd700;
+            color: black;
+            border-color: #fff;
+        }
+        .shutter-btn {
+            background-color: #ff3300;
+            border: 3px solid #ccc;
             width: 80px;
             height: 80px;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #991f00;
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+        .shutter-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 #991f00;
+        }
+        .shutter-btn:disabled {
+            background-color: #555;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+        /* Efek kilat layar putih */
+        #screen-flash {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: white;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.1s ease-out;
+            z-index: 10;
+        }
+        #status-text {
+            position: absolute;
+            bottom: 120px;
+            left: 0;
+            width: 100%;
+            text-align: center;
             font-size: 14px;
             font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 6px 0 #c0392b;
-            transition: all 0.1s;
-        }
-        .capture-btn:active {
-            transform: translateY(6px);
-            box-shadow: 0 0 0 #c0392b;
-        }
-        input[type="file"] {
-            display: none; /* Sembunyikan input asli */
-        }
-        #status {
-            margin-top: 25px;
-            font-weight: bold;
-            color: #5a4f3f;
-            min-height: 20px;
+            color: #fff;
+            text-shadow: 1px 1px 2px #000;
+            z-index: 5;
         }
     </style>
 </head>
 <body>
 
-<div class="camera-container">
-    <h1>Wedding Snap</h1>
-    <p>Help us capture the moment!</p>
+<div class="camera-body">
+    <div class="header">
+        <div>WEDDING SNAP</div>
+        <div class="film-counter" id="counter">13</div>
+    </div>
 
-    <!-- Lensa Kamera Imitasi -->
-    <div class="lens"></div>
+    <div class="viewfinder-container">
+        <!-- Video stream dari kamera -->
+        <video id="camera-stream" autoplay playsinline></video>
+        <!-- Overlay bingkai -->
+        <div class="frame-overlay"></div>
+        <!-- Efek kilat flash -->
+        <div id="screen-flash"></div>
+        <!-- Status upload -->
+        <div id="status-text"></div>
+    </div>
 
-    <!-- Input file dengan capture="environment" untuk kamera belakang -->
-    <input type="file" id="cameraInput" accept="image/*" capture="environment">
-
-    <!-- Tombol Shutter -->
-    <button class="capture-btn" onclick="document.getElementById('cameraInput').click()">SNAP</button>
-
-    <div id="status"></div>
+    <div class="controls">
+        <button class="flash-btn" id="flashBtn" onclick="toggleFlash()">FLASH<br>OFF</button>
+        <button class="shutter-btn" id="shutterBtn" onclick="takePhoto()"></button>
+        <div style="width: 60px;"></div> <!-- Spacer -->
+    </div>
 </div>
 
+<!-- Canvas tersembunyi untuk memproses foto -->
+<canvas id="photo-canvas" style="display: none;"></canvas>
+
 <script>
-    // PERHATIAN: Ganti URL di bawah ini dengan URL Web App Apps Script kamu nanti
+    // MASUKKAN URL APPS SCRIPT ANDA DI SINI
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz4Kqn-ZLGxXSEXeH8Koeq0jElFckT_TEZ0pEJdYQO8ROrskvgTIEMo5oEzJe8Lm6p8/exec';
 
-    const cameraInput = document.getElementById('cameraInput');
-    const statusDiv = document.getElementById('status');
+    const MAX_PHOTOS = 13;
+    let photosTaken = localStorage.getItem('wedding_photos') ? parseInt(localStorage.getItem('wedding_photos')) : 0;
+    
+    const video = document.getElementById('camera-stream');
+    const canvas = document.getElementById('photo-canvas');
+    const flashBtn = document.getElementById('flashBtn');
+    const shutterBtn = document.getElementById('shutterBtn');
+    const counterDisplay = document.getElementById('counter');
+    const statusText = document.getElementById('status-text');
+    const screenFlash = document.getElementById('screen-flash');
 
-    cameraInput.addEventListener('change', function(event) {
-        const file = event.target.files[0];
-        if (file) {
-            uploadPhoto(file);
+    let stream = null;
+    let imageTrack = null;
+    let flashOn = false;
+
+    // Update tampilan sisa foto
+    function updateCounterUI() {
+        let remaining = MAX_PHOTOS - photosTaken;
+        counterDisplay.innerText = remaining < 10 ? '0' + remaining : remaining;
+        
+        if (remaining <= 0) {
+            shutterBtn.disabled = true;
+            statusText.innerText = "Roll film habis! Terima kasih.";
         }
-    });
-
-    function uploadPhoto(file) {
-        statusDiv.innerText = "Memutar roll film... 📸";
-
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const base64Data = e.target.result;
-
-            const payload = {
-                base64: base64Data,
-                filename: 'WeddingSnap_' + Date.now() + '.jpg',
-                mimeType: file.type
-            };
-
-            statusDiv.innerText = "Menyimpan ke album... ⏳";
-
-            fetch(SCRIPT_URL, {
-                method: 'POST',
-                body: JSON.stringify(payload),
-                // Gunakan text/plain agar tidak terkena error CORS dari Google
-                headers: {
-                    'Content-Type': 'text/plain;charset=utf-8', 
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    statusDiv.innerText = "Berhasil! Siap untuk foto berikutnya. 🎉";
-                } else {
-                    statusDiv.innerText = "Ups, gagal menyimpan. Coba lagi.";
-                    console.error(data.message);
-                }
-                cameraInput.value = ''; // Reset input
-            })
-            .catch(error => {
-                statusDiv.innerText = "Terjadi kesalahan jaringan.";
-                console.error('Error:', error);
-            });
-        };
-        reader.readAsDataURL(file);
     }
+    updateCounterUI();
+
+    // Meminta akses kamera belakang
+    async function startCamera() {
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: { ideal: "environment" } },
+                audio: false
+            });
+            video.srcObject = stream;
+            
+            // Ambil track video untuk mengontrol flash (jika didukung)
+            imageTrack = stream.getVideoTracks()[0];
+        } catch (err) {
+            alert("Gagal mengakses kamera. Tolong izinkan akses kamera di browser Anda.");
+            console.error(err);
+        }
+    }
+
+    // Mengaktifkan/menonaktifkan hardware flash
+    async function toggleFlash() {
+        flashOn = !flashOn;
+        flashBtn.classList.toggle('active');
+        flashBtn.innerHTML = flashOn ? "FLASH<br>ON" : "FLASH<br>OFF";
+
+        if (imageTrack) {
+            const capabilities = imageTrack.getCapabilities();
+            if (capabilities.torch) {
+                try {
+                    await imageTrack.applyConstraints({
+                        advanced: [{ torch: flashOn }]
+                    });
+                } catch (e) {
+                    console.log("Tidak bisa menyalakan senter hardware", e);
+                }
+            } else {
+                // Jika hardware tidak didukung (sangat sering terjadi di iPhone),
+                // abaikan saja, kita tetap punya screen flash buatan.
+                console.log("Torch hardware tidak didukung.");
+            }
+        }
+    }
+
+    // Fungsi saat tombol shutter ditekan
+    function takePhoto() {
+        if (photosTaken >= MAX_PHOTOS) return;
+
+        // Efek Flash Layar Putih
+        if (flashOn) {
+            screenFlash.style.opacity = 1;
+            setTimeout(() => { screenFlash.style.opacity = 0; }, 150);
+        } else {
+            // Flash buatan tipis sebagai penanda jepretan
+            screenFlash.style.opacity = 0.5;
+            setTimeout(() => { screenFlash.style.opacity = 0; }, 50);
+        }
+
+        // Putar suara shutter (opsional, jika ingin menambahkan MP3)
+        // new Audio('shutter.mp3').play();
+
+        // Atur ukuran canvas sama dengan video aktual
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+
+        // 1. Gambar video ke canvas beserta filter warna
+        ctx.filter = 'contrast(1.2) saturate(1.3) sepia(0.2)';
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        ctx.filter = 'none';
+
+        // 2. Tambahkan efek Vignette (pinggiran gelap)
+        const gradient = ctx.createRadialGradient(
+            canvas.width/2, canvas.height/2, 0,
+            canvas.width/2, canvas.height/2, canvas.width * 0.7
+        );
+        gradient.addColorStop(0, 'rgba(0,0,0,0)');
+        gradient.addColorStop(1, 'rgba(0,0,0,0.6)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // 3. Tambahkan Cap Tanggal ala Analog di Kanan Bawah
+        const date = new Date();
+        const dateString = `${date.getDate()} ${date.getMonth()+1} '${date.getFullYear().toString().substr(2)}`;
+        
+        ctx.font = `bold ${canvas.height * 0.05}px "Courier New"`;
+        ctx.fillStyle = '#ff9900'; // Warna oranye neon
+        ctx.shadowColor = 'black';
+        ctx.shadowBlur = 4;
+        ctx.textAlign = 'right';
+        ctx.fillText(dateString, canvas.width - (canvas.width * 0.05), canvas.height - (canvas.height * 0.05));
+
+        // Ubah gambar menjadi base64
+        const base64Data = canvas.toDataURL('image/jpeg', 0.8);
+
+        // Tambah hitungan foto dan simpan ke memori HP
+        photosTaken++;
+        localStorage.setItem('wedding_photos', photosTaken);
+        updateCounterUI();
+
+        // Kirim ke Google Drive
+        sendToDrive(base64Data);
+    }
+
+    // Fungsi upload foto
+    function sendToDrive(base64Data) {
+        statusText.innerText = "Mencetak foto... ⏳";
+        
+        const payload = {
+            base64: base64Data,
+            filename: 'KameraAnalog_' + Date.now() + '.jpg',
+            mimeType: 'image/jpeg'
+        };
+
+        fetch(SCRIPT_URL, {
+            method: 'POST',
+            body: JSON.stringify(payload),
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                statusText.innerText = "Tersimpan! 🎞️";
+                setTimeout(() => { statusText.innerText = ""; }, 2000);
+            } else {
+                statusText.innerText = "Ups, gagal menyimpan.";
+            }
+        })
+        .catch(error => {
+            statusText.innerText = "Jaringan jelek, gagal disimpan.";
+        });
+    }
+
+    // Jalankan kamera saat halaman dibuka
+    window.onload = startCamera;
 </script>
 
 </body>
