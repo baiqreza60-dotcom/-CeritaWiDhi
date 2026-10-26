@@ -15,8 +15,8 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh; /* Fallback untuk browser lama */
-            height: 100dvh; /* Menyesuaikan search bar HP */
+            height: 100vh;
+            height: 100dvh;
             overflow: hidden;
         }
         .camera-body {
@@ -87,7 +87,7 @@
             background-color: #2b5f3a;
             padding: 15px 20px 5px 20px;
             border-top: 2px solid #111;
-            z-index: 20; /* Memastikan bisa diklik */
+            z-index: 20;
         }
         .filter-btn {
             background-color: #111;
@@ -114,7 +114,7 @@
             justify-content: space-around;
             align-items: center;
             background-color: #2b5f3a;
-            z-index: 20; /* Memastikan tidak tertimpa elemen lain */
+            z-index: 20;
         }
         .side-btn {
             background-color: #333;
@@ -262,7 +262,6 @@
 
     async function startCamera() {
         try {
-            // Mengecek apakah browser mendukung kamera
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 alert("Browser ini tidak mendukung akses kamera langsung.");
                 return;
@@ -275,10 +274,8 @@
             
             video.srcObject = stream;
             
-            // Memaksa video untuk play (memperbaiki bug layar hitam di beberapa HP)
             await video.play();
             
-            // Mengambil pengaturan hardware kamera untuk flash
             const tracks = stream.getVideoTracks();
             if (tracks.length > 0) {
                 imageTrack = tracks[0];
@@ -341,14 +338,17 @@
         }
         ctx.filter = 'none';
 
-        const gradient = ctx.createRadialGradient(
-            canvas.width/2, canvas.height/2, canvas.width * 0.4,
-            canvas.width/2, canvas.height/2, canvas.width * 0.8
-        );
-        gradient.addColorStop(0, 'rgba(0,0,0,0)');
-        gradient.addColorStop(1, 'rgba(0,0,0,0.5)'); 
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // Modifikasi: Efek vignette (pinggiran gelap) HANYA berlaku jika BUKAN filter NORMAL (index 0)
+        if (currentFilterIdx !== 0) {
+            const gradient = ctx.createRadialGradient(
+                canvas.width/2, canvas.height/2, canvas.width * 0.4,
+                canvas.width/2, canvas.height/2, canvas.width * 0.8
+            );
+            gradient.addColorStop(0, 'rgba(0,0,0,0)');
+            gradient.addColorStop(1, 'rgba(0,0,0,0.5)'); 
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
 
         const base64Data = canvas.toDataURL('image/jpeg', 0.8);
 
